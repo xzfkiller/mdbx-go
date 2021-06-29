@@ -131,11 +131,12 @@ details about dealing with such situations.
 package mdbx
 
 /*
-#cgo !windows CFLAGS: -O2 -g -DMDBX_BUILD_FLAGS='' -fPIC -fvisibility=hidden -pthread -Wno-error=attributes -W -Wall -Wno-deprecated-declarations -Wno-format -Wno-implicit-fallthrough -Wno-unused-parameter -Wno-format-extra-args -Wno-missing-field-initializers
-#cgo windows CFLAGS: -O2 -g -DMDBX_BUILD_FLAGS='' -fvisibility=hidden -ffast-math -fexceptions -fno-common -W -Wno-deprecated-declarations -Wno-bad-function-cast -Wno-cast-function-type -Wall -Wno-format -Wno-implicit-fallthrough -Wno-unused-parameter -Wno-format-extra-args -Wno-missing-field-initializers
+#cgo CFLAGS: -std=gnu11 -O2 -g -Wall -Werror -Wextra -Wpedantic -fvisibility=hidden -pthread -Wno-error=attributes
+#cgo linux,pwritev CFLAGS: -DMDB_USE_PWRITEV
 
 #cgo windows LDFLAGS: -lntdll
 #cgo linux LDFLAGS: -lrt
+#include "mdbx.h"
 */
 import "C"
 
