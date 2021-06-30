@@ -9,7 +9,6 @@ import "C"
 
 import (
 	"errors"
-	"os"
 	"runtime"
 	"sync"
 	"unsafe"
@@ -22,15 +21,12 @@ const (
 	//
 	// See mdbx_env_open
 
-	FixedMap    = C.MDBX_FIXEDMAP   // Danger zone. Map memory at a fixed address.
 	NoSubdir    = C.MDBX_NOSUBDIR   // Argument to Open is a file, not a directory.
 	Readonly    = C.MDBX_RDONLY     // Used in several functions to denote an object as readonly.
 	WriteMap    = C.MDBX_WRITEMAP   // Use a writable memory map.
 	NoMetaSync  = C.MDBX_NOMETASYNC // Don't fsync metapage after commit.
-	NoSync      = C.MDBX_NOSYNC     // Don't fsync after commit.
 	MapAsync    = C.MDBX_MAPASYNC   // Flush asynchronously when using the WriteMap flag.
 	NoTLS       = C.MDBX_NOTLS      // Danger zone. When unset reader locktable slots are tied to their thread.
-	NoLock      = C.MDBX_NOLOCK     // Danger zone. MDBX does not use any locks.
 	NoReadahead = C.MDBX_NORDAHEAD  // Disable readahead. Requires OS support.
 	NoMemInit   = C.MDBX_NOMEMINIT  // Disable MDBX memory initialization.
 )

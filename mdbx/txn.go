@@ -27,12 +27,33 @@ const (
 	Create     = C.MDBX_CREATE     // Create DB if not already existing.
 )
 
+// The MDB_MULTIPLE and MDB_RESERVE flags are special and do not fit the
+// calling pattern of other calls to Put.  They are not exported because they
+// require special methods, PutMultiple and PutReserve in which the flag is
+// implied and does not need to be passed.
+const (
+	// Flags for Txn.Put and Cursor.Put.
+	//
+	// See mdbx_put and mdbx_cursor_put.
+
+	Current     = C.MDBX_CURRENT     // Replace the item at the current key position (Cursor only)
+	NoDupData   = C.MDBX_NODUPDATA   // Store the key-value pair only if key is not present (DupSort).
+	NoOverwrite = C.MDBX_NOOVERWRITE // Store a new key-value pair only if key is not present.
+	Append      = C.MDBX_APPEND      // Append an item to the database.
+	AppendDup   = C.MDBX_APPENDDUP   // Append an item to the database (DupSort).
+)
+
+const (
+	valSizeBits = 31
+	valMaxSize  = 1<<valSizeBits - 1
+)
+
 // Txn is a database transaction in an environment.
 //
 // WARNING: A writable Txn is not threadsafe and may only be used in the
 // goroutine that created it.
 //
-// See MDB_txn.
+// See MDBX_txn.
 type Txn struct {
 	// If RawRead is true []byte values retrieved from Get() calls on the Txn
 	// and its cursors will point directly into the memory-mapped structure.
@@ -92,9 +113,9 @@ func beginTxn(env *Env, parent *Txn, flags uint) (*Txn, error) {
 		txn.key = parent.key
 		txn.val = parent.val
 	}
-	ret := C.mdbx_txn_begin(env._env, ptxn, C.uint(flags), &txn._txn)
+	ret := C.mdbx_txn_begin(env._env, ptxn, C.MDBX_txn_flags_t(flags), &txn._txn)
 	if ret != success {
-		return nil, operrno("mdb_txn_begin", ret)
+		return nil, operrno("mdbx_txn_begin", ret)
 	}
 	return txn, nil
 }
@@ -103,12 +124,12 @@ func beginTxn(env *Env, parent *Txn, flags uint) (*Txn, error) {
 // corresponds to the Env snapshot being viewed and may be shared with other
 // view transactions.
 //
-// See mdb_txn_id.
+// See mdbx_txn_id.
 func (txn *Txn) ID() uintptr {
 	// It is possible for a txn to legitimately have ID 0 if it a readonly txn
 	// created before any updates.  In practice this does not really happen
 	// because an application typically must do an initial update to initialize
-	// application dbis.  Even so, calling C.mdb_txn_id excessively isn't
+	// application dbis.  Even so, calling C.mdbx_txn_id excessively isn't
 	// actually harmful, it is just slow.
 	if txn.id == 0 {
 		txn.id = txn.getID()
@@ -118,7 +139,7 @@ func (txn *Txn) ID() uintptr {
 }
 
 func (txn *Txn) getID() uintptr {
-	return uintptr(C.mdb_txn_id(txn._txn))
+	return uintptr(C.mdbx_txn_id(txn._txn))
 }
 
 // RunOp executes fn with txn as an argument.  During the execution of fn no
@@ -323,7 +344,7 @@ func (txn *Txn) OpenRoot(flags uint) (DBI, error) {
 // database.
 func (txn *Txn) openDBI(cname *C.char, flags uint) (DBI, error) {
 	var dbi C.MDBX_dbi
-	ret := C.mdbx_dbi_open(txn._txn, cname, C.uint(flags), &dbi)
+	ret := C.mdbx_dbi_open(txn._txn, cname, C.MDBX_db_flags_t(flags), &dbi)
 	return DBI(dbi), operrno("mdbx_dbi_open", ret)
 }
 
@@ -367,6 +388,23 @@ func (txn *Txn) subFlag(flags uint, fn TxnOp) error {
 	return sub.commit()
 }
 
+var eb = []byte{0}
+
+func valBytes(b []byte) ([]byte, int) {
+	if len(b) == 0 {
+		return eb, 0
+	}
+	return b, len(b)
+}
+
+func getBytes(val *C.MDBX_val) []byte {
+	return (*[valMaxSize]byte)(unsafe.Pointer(val.iov_base))[:val.iov_len:val.iov_len]
+}
+
+func getBytesCopy(val *C.MDBX_val) []byte {
+	return C.GoBytes(val.iov_base, C.int(val.iov_len))
+}
+
 func (txn *Txn) bytes(val *C.MDBX_val) []byte {
 	if txn.RawRead {
 		return getBytes(val)
@@ -383,7 +421,7 @@ func (txn *Txn) Get(dbi DBI, key []byte) ([]byte, error) {
 	kdata, kn := valBytes(key)
 	ret := C.mdbx_get(
 		txn._txn, C.MDBX_dbi(dbi),
-		(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn),
+		C.MDBX_val{(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn)},
 		txn.val,
 	)
 	err := operrno("mdbx_get", ret)
@@ -398,7 +436,8 @@ func (txn *Txn) Get(dbi DBI, key []byte) ([]byte, error) {
 
 func (txn *Txn) putNilKey(dbi DBI, flags uint) error {
 	// mdbx_put with an empty key will always fail
-	ret := C.mdbx_put(txn._txn, C.MDBX_dbi(dbi), nil, 0, nil, 0, C.uint(flags))
+	ret := C.mdbx_put(txn._txn, C.MDBX_dbi(dbi),
+		C.MDBX_val{nil, 0}, C.MDBX_val{nil, 0}, C.uint(flags))
 	return operrno("mdbx_put", ret)
 }
 
@@ -417,8 +456,8 @@ func (txn *Txn) Put(dbi DBI, key []byte, val []byte, flags uint) error {
 
 	ret := C.mdbx_put(
 		txn._txn, C.MDBX_dbi(dbi),
-		(*C.char)(unsafe.Pointer(&key[0])), C.size_t(kn),
-		(*C.char)(unsafe.Pointer(&val[0])), C.size_t(vn),
+		C.MDBX_val{(*C.char)(unsafe.Pointer(&key[0])), C.size_t(kn)},
+		C.MDBX_val{(*C.char)(unsafe.Pointer(&val[0])), C.size_t(vn)},
 		C.uint(flags),
 	)
 	return operrno("mdbx_put", ret)
@@ -433,8 +472,8 @@ func (txn *Txn) Del(dbi DBI, key, val []byte) error {
 	vdata, vn := valBytes(val)
 	ret := C.mdbx_del(
 		txn._txn, C.MDBX_dbi(dbi),
-		(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn),
-		(*C.char)(unsafe.Pointer(&vdata[0])), C.size_t(vn),
+		C.MDBX_val{(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn)},
+		C.MDBX_val{(*C.char)(unsafe.Pointer(&vdata[0])), C.size_t(vn)},
 	)
 	return operrno("mdbx_del", ret)
 }

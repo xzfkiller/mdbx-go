@@ -2,6 +2,7 @@ package mdbx
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,7 +23,7 @@ func TestTest1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cannot create directory: %s", path)
 	}
-	err = env.Open(path, 0, 0664)
+	err = env.Open(path)
 	defer env.Close()
 	if err != nil {
 		t.Fatalf("Cannot open environment: %s", err)
@@ -63,21 +64,27 @@ func TestTest1(t *testing.T) {
 		var key string
 		var val string
 		var err error
+		var vRead []byte
+
+		db, err = txn.OpenRoot(0)
+		if err != nil {
+			return err
+		}
+
 		for i := 0; i < numEntries; i++ {
 			key = fmt.Sprintf("Key-%d", i)
 			val = fmt.Sprintf("Val-%d", i)
 
-			ret, err = tx.Get(db.dbi, key)
-			if mdbx.IsNotFound(err) {
+			vRead, err = txn.Get(db, []byte(key))
+			if IsNotFound(err) {
 				return errors.New("MDBX: not found")
 			}
 
-			if bytes.Compare(ret, value) != 0 {
-				t.Errorf("[BAD]: Value not match, expect: %v, got: %v", value, vRead)
+			if bytes.Compare(vRead, []byte(val)) != 0 {
+				t.Errorf("[BAD]: Value not match, expect: %v, got: %v", val, vRead)
 			} else {
 				t.Logf("[GOOD]: Found value for key and matched")
 			}
-
 		}
 
 		return nil

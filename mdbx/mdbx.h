@@ -365,7 +365,8 @@ typedef mode_t mdbx_mode_t;
 
 #ifndef __cplusplus
 #ifndef bool
-#define bool _Bool
+//#define bool _Bool
+#define bool int
 #endif
 #ifndef true
 #define true (1)
