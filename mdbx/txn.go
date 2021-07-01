@@ -469,8 +469,17 @@ func (txn *Txn) Put(dbi DBI, key []byte, val []byte, flags uint) error {
 // See mdbx_del.
 func (txn *Txn) Del(dbi DBI, key, val []byte) error {
 	kdata, kn := valBytes(key)
-	vdata, vn := valBytes(val)
-	ret := C.mdbxgo_mdb_del(
+	ret := C.mdbxgo_mdb_del1(
+		txn._txn, C.MDBX_dbi(dbi),
+		(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn),
+	)
+	return operrno("mdbx_del", ret)
+}
+
+func (txn *Txn) DelwithVal(dbi DBI, key, val []byte) error {
+	kdata, kn := valBytes(key)
+	vdata, vn := valBytes(key)
+	ret := C.mdbxgo_mdb_del2(
 		txn._txn, C.MDBX_dbi(dbi),
 		(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn),
 		(*C.char)(unsafe.Pointer(&vdata[0])), C.size_t(vn),

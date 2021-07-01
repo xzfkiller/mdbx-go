@@ -17,7 +17,8 @@
  *      https://github.com/golang/go/issues/15048
  *      https://github.com/bmatsuo/lmdb-go/issues/63
  * */
-int mdbxgo_mdb_del(MDBX_txn *txn, MDBX_dbi dbi, char *kdata, size_t kn, char *vdata, size_t vn);
+int mdbxgo_mdb_del1(MDBX_txn *txn, MDBX_dbi dbi, char *kdata, size_t kn);
+int mdbxgo_mdb_del2(MDBX_txn *txn, MDBX_dbi dbi, char *kdata, size_t kn, char *vdata, size_t vn);
 int mdbxgo_mdb_get(MDBX_txn *txn, MDBX_dbi dbi, char *kdata, size_t kn, MDBX_val *val);
 int mdbxgo_mdb_put1(MDBX_txn *txn, MDBX_dbi dbi, char *kdata, size_t kn, MDBX_val *val, unsigned int flags);
 int mdbxgo_mdb_put2(MDBX_txn *txn, MDBX_dbi dbi, char *kdata, size_t kn, char *vdata, size_t vn, unsigned int flags);
