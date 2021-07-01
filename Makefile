@@ -8,7 +8,7 @@ GOLDFLAGS="-X main.branch $(BRANCH) -X main.commit $(COMMIT)"
 
 all:
 test:
-	go test ./mdbx
+	go test -v ./mdbx
 
 clean:
 	@rm -rf *~

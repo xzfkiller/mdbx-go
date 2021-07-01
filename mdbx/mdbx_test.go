@@ -9,7 +9,9 @@ import (
 	"testing"
 )
 
-func TestTest1(t *testing.T) {
+func TestMDBX(t *testing.T) {
+	t.Logf("Begin Testing MDBX...")
+
 	env, err := NewEnv()
 	if err != nil {
 		t.Fatalf("Cannot create environment: %s", err)

@@ -4,6 +4,7 @@ package mdbx
 #include <stdlib.h>
 #include <stdio.h>
 #include "mdbx.h"
+#include "mdbxgo.h"
 */
 import "C"
 
@@ -419,9 +420,9 @@ func (txn *Txn) bytes(val *C.MDBX_val) []byte {
 // See mdbx_get.
 func (txn *Txn) Get(dbi DBI, key []byte) ([]byte, error) {
 	kdata, kn := valBytes(key)
-	ret := C.mdbx_get(
+	ret := C.mdbxgo_mdb_get(
 		txn._txn, C.MDBX_dbi(dbi),
-		C.MDBX_val{(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn)},
+		(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn),
 		txn.val,
 	)
 	err := operrno("mdbx_get", ret)
@@ -436,8 +437,7 @@ func (txn *Txn) Get(dbi DBI, key []byte) ([]byte, error) {
 
 func (txn *Txn) putNilKey(dbi DBI, flags uint) error {
 	// mdbx_put with an empty key will always fail
-	ret := C.mdbx_put(txn._txn, C.MDBX_dbi(dbi),
-		C.MDBX_val{nil, 0}, C.MDBX_val{nil, 0}, C.uint(flags))
+	ret := C.mdbxgo_mdb_put2(txn._txn, C.MDBX_dbi(dbi), nil, 0, nil, 0, C.uint(flags))
 	return operrno("mdbx_put", ret)
 }
 
@@ -454,10 +454,10 @@ func (txn *Txn) Put(dbi DBI, key []byte, val []byte, flags uint) error {
 		val = []byte{0}
 	}
 
-	ret := C.mdbx_put(
+	ret := C.mdbxgo_mdb_put2(
 		txn._txn, C.MDBX_dbi(dbi),
-		C.MDBX_val{(*C.char)(unsafe.Pointer(&key[0])), C.size_t(kn)},
-		C.MDBX_val{(*C.char)(unsafe.Pointer(&val[0])), C.size_t(vn)},
+		(*C.char)(unsafe.Pointer(&key[0])), C.size_t(kn),
+		(*C.char)(unsafe.Pointer(&val[0])), C.size_t(vn),
 		C.uint(flags),
 	)
 	return operrno("mdbx_put", ret)
@@ -470,10 +470,10 @@ func (txn *Txn) Put(dbi DBI, key []byte, val []byte, flags uint) error {
 func (txn *Txn) Del(dbi DBI, key, val []byte) error {
 	kdata, kn := valBytes(key)
 	vdata, vn := valBytes(val)
-	ret := C.mdbx_del(
+	ret := C.mdbxgo_mdb_del(
 		txn._txn, C.MDBX_dbi(dbi),
-		C.MDBX_val{(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn)},
-		C.MDBX_val{(*C.char)(unsafe.Pointer(&vdata[0])), C.size_t(vn)},
+		(*C.char)(unsafe.Pointer(&kdata[0])), C.size_t(kn),
+		(*C.char)(unsafe.Pointer(&vdata[0])), C.size_t(vn),
 	)
 	return operrno("mdbx_del", ret)
 }

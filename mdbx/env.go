@@ -74,7 +74,7 @@ func NewEnv() (*Env, error) {
 func (env *Env) Open(path string) error {
 	cpath := C.CString(path)
 	defer C.free(unsafe.Pointer(cpath))
-	ret := C.mdbx_env_open(env._env, cpath, C.MDBX_NOSUBDIR|C.MDBX_COALESCE|C.MDBX_LIFORECLAIM, 0664)
+	ret := C.mdbx_env_open(env._env, cpath, C.MDBX_NOSUBDIR|C.MDBX_COALESCE|C.MDBX_LIFORECLAIM|C.MDBX_NORDAHEAD, 0664)
 	return operrno("mdbx_env_open", ret)
 }
 
