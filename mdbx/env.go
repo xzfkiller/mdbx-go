@@ -78,6 +78,9 @@ func (env *Env) Open(path string) error {
 	return operrno("mdbx_env_open", ret)
 }
 
+var errNotOpen = errors.New("enivornment is not open")
+var errNegSize = errors.New("negative size")
+
 func (env *Env) close() bool {
 	if env._env == nil {
 		return false
@@ -105,6 +108,63 @@ func (env *Env) Close() error {
 		return nil
 	}
 	return errors.New("environment is already closed")
+}
+
+func (env *Env) SetGeometry(size_lower, size_now, size_upper, growth_step, shrink_threshold, pagesize int) error {
+	if size_upper < 0 || pagesize < 0 {
+		return errNegSize
+	}
+	ret := C.mdbx_env_set_geometry(env._env,
+		C.long(size_lower), C.long(size_now), C.long(size_upper),
+		C.long(growth_step), C.long(shrink_threshold), C.long(pagesize))
+	return operrno("mdbx_env_set_geometry", ret)
+}
+
+// Path returns the path argument passed to Open.  Path returns a non-nil error
+// if env.Open() was not previously called.
+//
+// See mdbx_env_get_path.
+func (env *Env) Path() (string, error) {
+	var cpath *C.char
+	ret := C.mdbx_env_get_path(env._env, &cpath)
+	if ret != success {
+		return "", operrno("mdbx_env_get_path", ret)
+	}
+	if cpath == nil {
+		return "", errNotOpen
+	}
+	return C.GoString(cpath), nil
+}
+
+// SetMaxReaders sets the maximum number of reader slots in the environment.
+//
+// See mdbx_env_set_maxreaders.
+func (env *Env) SetMaxReaders(size int) error {
+	if size < 0 {
+		return errNegSize
+	}
+	ret := C.mdbx_env_set_maxreaders(env._env, C.uint(size))
+	return operrno("mdb_env_set_maxreaders", ret)
+}
+
+// MaxReaders returns the maximum number of reader slots for the environment.
+//
+// See mdbx_env_get_maxreaders.
+func (env *Env) MaxReaders() (int, error) {
+	var max C.uint
+	ret := C.mdbx_env_get_maxreaders(env._env, &max)
+	return int(max), operrno("mdbx_env_get_maxreaders", ret)
+}
+
+// SetMaxDBs sets the maximum number of named databases for the environment.
+//
+// See mdbx_env_set_maxdbs.
+func (env *Env) SetMaxDBs(size int) error {
+	if size < 0 {
+		return errNegSize
+	}
+	ret := C.mdbx_env_set_maxdbs(env._env, C.MDBX_dbi(size))
+	return operrno("mdbx_env_set_maxdbs", ret)
 }
 
 // BeginTxn is an unsafe, low-level method to initialize a new transaction on

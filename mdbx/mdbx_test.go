@@ -16,6 +16,12 @@ func TestMDBX(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cannot create environment: %s", err)
 	}
+	if err = env.SetGeometry(-1, -1, int(42949672960), int(102400000), -1, 4096); err != nil {
+		t.Fatalf("Cannot setGeometry: %s", err)
+	}
+	if err = env.SetMaxDBs(4); err != nil {
+		t.Fatalf("Cannot setMaxDBs: %s", err)
+	}
 	path, err := ioutil.TempDir("", "mdbx_test")
 	if err != nil {
 		t.Fatalf("Cannot create temporary directory")
